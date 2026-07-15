@@ -1,0 +1,34 @@
+{% extends "base.html" %}{% block content %}
+{% if error %}<div class="alert danger"><strong>Controller error:</strong> {{ error }}</div>{% endif %}
+<section class="toolbar">
+  <form method="post" action="/actions/run"><input type="hidden" name="mode" value="dry-run"><button class="button">Run dry evaluation</button></form>
+  <form method="post" action="/actions/run" data-confirm="This can change pool settings and restart miners. Continue?"><input type="hidden" name="mode" value="live"><button class="button danger">Run live switching</button></form>
+  <span class="pill {% if config.get('general',{}).get('dry_run',true) %}warn{% else %}ok{% endif %}">{{ 'DRY RUN' if config.get('general',{}).get('dry_run',true) else 'LIVE MODE' }}</span>
+  <span class="muted">Last run: {{ state.get('last_run') or 'never' }}</span>
+</section>
+{% if miners %}
+<div class="card-grid">
+{% for mid, miner in miners.items() %}
+  {% set rows=results.get(mid,[]) %}{% set best=rows[0] if rows else none %}{% set mst=state.get('miners',{}).get(mid,{}) %}
+  <article class="card miner-card">
+    <div class="card-head"><div><h2>{{ miner.name }}</h2><code>{{ mid }}</code></div><span class="status-dot {{ 'online' if miner.info else 'offline' }}"></span></div>
+    <div class="metrics">
+      <div><span>Hashrate</span><strong>{{ '%.3f'|format(miner.hashrate_ths) }} TH/s</strong></div>
+      <div><span>Power</span><strong>{{ '%.1f'|format(miner.power_watts) }} W</strong></div>
+      <div><span>Efficiency</span><strong>{{ '%.1f'|format(miner.power_watts/miner.hashrate_ths) }} J/TH</strong></div>
+      <div><span>Current</span><strong>{{ miner.current_profile or mst.get('active_profile') or 'Unknown' }}</strong></div>
+    </div>
+    {% if best %}<div class="recommendation"><span>Best calculated profile</span><strong>{{ best.profile }} · {{ best.coin }}</strong><small>{{ '$%.5f/day net'|format(best.net) }}</small></div>{% endif %}
+    <div class="decision"><span>Last decision</span><code>{{ mst.get('last_decision',{}).get('action','none') }}</code><small>{{ mst.get('last_decision',{}).get('reason','No decision recorded') }}</small></div>
+    <div class="card-actions"><a class="button small ghost" href="http://{{ miner.address }}" target="_blank">Open AxeOS</a><form method="post" action="/actions/restart" data-confirm="Restart {{ miner.name }}?"><input type="hidden" name="miner_id" value="{{ mid }}"><button class="button small ghost">Restart</button></form></div>
+  </article>
+{% endfor %}
+</div>
+{% for mid, rows in results.items() %}
+<section class="panel"><div class="panel-head"><div><h2>{{ miners[mid].name }} profitability</h2><p>Expected values, not guaranteed payouts.</p></div></div>
+<div class="table-wrap"><table><thead><tr><th>Profile</th><th>Coin</th><th>Gross/day</th><th>Power/day</th><th>Fees/day</th><th>Net/day</th><th>Bias</th><th>Control</th></tr></thead><tbody>
+{% for row in rows %}<tr class="{% if loop.first %}best-row{% endif %}"><td><strong>{{ row.profile }}</strong></td><td>{{ row.coin }}</td><td>${{ '%.5f'|format(row.gross) }}</td><td>${{ '%.5f'|format(row.electricity) }}</td><td>${{ '%.5f'|format(row.fees) }}</td><td class="{{ 'positive' if row.net >= 0 else 'negative' }}">${{ '%.5f'|format(row.net) }}</td><td>{{ '%.2f'|format(row.bias) }}×</td><td><div class="inline-actions"><form method="post" action="/actions/switch"><input type="hidden" name="miner_id" value="{{ mid }}"><input type="hidden" name="profile_id" value="{{ row.profile }}"><button class="button tiny ghost">Simulate</button></form><form method="post" action="/actions/switch" data-confirm="LIVE switch {{ miners[mid].name }} to {{ row.profile }}?"><input type="hidden" name="miner_id" value="{{ mid }}"><input type="hidden" name="profile_id" value="{{ row.profile }}"><input type="hidden" name="live" value="yes"><button class="button tiny danger">Apply</button></form></div></td></tr>{% endfor %}
+</tbody></table></div></section>
+{% endfor %}
+{% else %}<div class="empty"><h2>No miners configured</h2><a class="button" href="/miners">Add your first miner</a></div>{% endif %}
+{% endblock %}
