@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title }} · Bitaxe Switcher</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='/app.css') }}">
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand"><span class="brand-mark">₿</span><div><strong>Bitaxe</strong><small>Profit Switcher</small></div></div>
+    <nav>
+      {% for key,label,icon,path in [
+        ('dashboard','Dashboard','▦','/'),('miners','Miners','⛏','/miners'),('profiles','Pool Profiles','⇄','/profiles'),
+        ('coins','Coins','◉','/coins'),('settings','Settings','⚙','/settings'),('config','Raw YAML','{}','/config'),('logs','Logs','≡','/logs') ] %}
+      <a href="{{ path }}" class="{% if active == key %}active{% endif %}"><span>{{ icon }}</span>{{ label }}</a>
+      {% endfor %}
+    </nav>
+    <div class="sidebar-note">Keep this interface on your trusted LAN. Do not expose AxeOS or this page directly to the internet.</div>
+  </aside>
+  <main>
+    <header class="topbar"><div><h1>{{ title }}</h1><p>Multi-miner SHA-256 pool management</p></div><a class="button ghost" href="/">Refresh</a></header>
+    {% if flash_message %}<div class="alert {{ flash_level }}">{{ flash_message }}</div>{% endif %}
+    {% block content %}{% endblock %}
+    <footer>Bitaxe Profit Switcher · {{ current_year }}</footer>
+  </main>
+</div>
+<script src="{{ url_for('static', path='/app.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body></html>
