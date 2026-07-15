@@ -3,7 +3,7 @@ name: Import source archive
 on:
   push:
     paths:
-      - 'release/bitaxe-profit-switcher-web-v1.zip'
+      - 'release/READY'
 
 permissions:
   contents: write
@@ -15,11 +15,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: homelab
+      - name: Rebuild source archive
+        run: |
+          cat release/parts/part*.b64 | tr -d '\n' | base64 -d > /tmp/bitaxe-profit-switcher-web-v1.zip
       - name: Extract project source
         run: |
           rm -rf /tmp/bitaxe-import
           mkdir -p /tmp/bitaxe-import
-          unzip -q release/bitaxe-profit-switcher-web-v1.zip -d /tmp/bitaxe-import
+          unzip -q /tmp/bitaxe-profit-switcher-web-v1.zip -d /tmp/bitaxe-import
           cp -a /tmp/bitaxe-import/bitaxe-profit-switcher/. ./
           rm -rf release
       - name: Commit extracted source
