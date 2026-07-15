@@ -1,97 +1,105 @@
-# Bitaxe Profit Switcher Web
+# Bitaxe Profit Switcher
 
-A Proxmox-friendly Python controller and local web dashboard for comparing SHA-256 mining profitability and independently switching multiple AxeOS miners between pool profiles.
+A multi-miner AxeOS controller for a Debian/Ubuntu LXC or VM on Proxmox.
 
-## Features
+It calculates expected daily results independently for every miner from:
 
-- Multiple AxeOS/Bitaxe miners
-- Per-miner expected or live TH/s and power consumption
-- Per-miner electricity-rate overrides
-- Independent allowed pool profiles per miner
-- BTC, BCH, DGB, and other SHA-256 profile support
-- CoinGecko, static, HTTP JSON, and Bitcoin-compatible JSON-RPC data providers
-- Pool fees, conversion fees, and controlled manual biasing
-- Conservative switch thresholds and confirmation checks
-- Dry-run mode
-- Manual profile switching and miner restarts
-- Local web interface on port `8088`
-- Persistent state, decision history, configuration backups, and logs
-- systemd services and timer for Debian/Ubuntu
+- Live or configured TH/s
+- Live or configured wattage
+- Electricity price
+- Coin price
+- SHA-256 network hashrate
+- Block reward and block interval
+- Pool and conversion fees
+- An optional manual bias
 
-> This application optimizes expected mining revenue. It does not predict prices or guarantee profit.
+It can then switch each miner to its own best eligible pool profile.
 
-## Web pages
+## Safety defaults
 
-- **Dashboard** — live status, efficiency, profitability, decisions, and manual actions
-- **Miners** — add miners and configure hashrate, power, electricity, and allowed profiles
-- **Pool Profiles** — configure Stratum V1/V2 pools, workers, wallets, fees, and AxeOS settings
-- **Coins** — configure price, network hashrate, block reward, and block interval data
-- **Settings** — configure switching rules and dry-run/live operation
-- **Raw YAML** — advanced configuration editor with validation and backups
-- **Logs** — view controller activity from the browser
+The supplied configuration starts in **dry-run mode** and requires:
 
-## Install on a Debian Proxmox LXC
+- 30% score advantage
+- At least $0.05/day additional expected net revenue
+- Four consecutive winning checks
+- Six hours minimum runtime before another switch
+- No more than two switches per miner per 24 hours
+- AxeOS profile verification after a change
+
+For a small Bitaxe, these conservative rules matter because most differences are only pennies.
+
+## Install
 
 ```bash
-git clone https://github.com/dejun17/Bitaxe-profit-switcher.git
-cd Bitaxe-profit-switcher
-chmod +x install-web.sh
-sudo ./install-web.sh
+unzip bitaxe-profit-switcher.zip
+cd bitaxe-profit-switcher
+chmod +x install.sh
+sudo ./install.sh
 ```
 
-Open:
-
-```text
-http://<LXC-IP>:8088
-```
-
-Find the LXC address with:
+Edit the config:
 
 ```bash
-hostname -I
+sudo nano /etc/bitaxe-switcher/config.yaml
 ```
 
-## First-run safety
+Set RPC/API secrets:
 
-The example configuration starts with dry-run enabled:
+```bash
+sudo cp examples/environment.example /etc/bitaxe-switcher/environment
+sudo chmod 600 /etc/bitaxe-switcher/environment
+sudo nano /etc/bitaxe-switcher/environment
+```
+
+## Test first
+
+```bash
+sudo -u bitaxe-switcher \
+  /opt/bitaxe-switcher/venv/bin/python \
+  /opt/bitaxe-switcher/bitaxe_switcher.py \
+  --config /etc/bitaxe-switcher/config.yaml \
+  --state /var/lib/bitaxe-switcher/state.json \
+  --dry-run compare
+```
+
+One automatic dry-run cycle:
+
+```bash
+sudo -u bitaxe-switcher \
+  /opt/bitaxe-switcher/venv/bin/python \
+  /opt/bitaxe-switcher/bitaxe_switcher.py \
+  --dry-run auto
+```
+
+Manual switch:
+
+```bash
+sudo -u bitaxe-switcher \
+  /opt/bitaxe-switcher/venv/bin/python \
+  /opt/bitaxe-switcher/bitaxe_switcher.py \
+  switch bitaxe_602 btc_braiins_sv2
+```
+
+## Enable the timer
+
+```bash
+sudo systemctl enable --now bitaxe-switcher.timer
+systemctl list-timers bitaxe-switcher.timer
+journalctl -u bitaxe-switcher.service -f
+```
+
+Leave this enabled for at least a week:
 
 ```yaml
 general:
   dry_run: true
 ```
 
-Before enabling automatic changes:
+Only set it to `false` after confirming the logged decisions are sensible.
 
-1. Open the web dashboard.
-2. Configure every miner.
-3. Verify all pool endpoints and AxeOS field names.
-4. Configure accurate coin/network statistics.
-5. Run dry evaluations for at least several days.
-6. Test each profile with a manual switch.
-7. Confirm the miner reconnects and submits accepted shares.
-8. Only then set `dry_run: false`.
+## Add miners
 
-## Service commands
-
-```bash
-systemctl status bitaxe-switcher-web
-journalctl -u bitaxe-switcher-web -f
-systemctl restart bitaxe-switcher-web
-```
-
-Controller log:
-
-```text
-/var/log/bitaxe-switcher.log
-```
-
-Configuration:
-
-```text
-/etc/bitaxe-switcher/config.yaml
-```
-
-## Add another miner
+Copy a block under `miners` and assign its own expected performance and allowed profiles:
 
 ```yaml
 miners:
@@ -104,35 +112,111 @@ miners:
     use_live_metrics: true
     use_live_hashrate: true
     use_live_power: true
+    electricity_usd_kwh: 0.12
     allowed_profiles:
       - btc_braiins_sv2
       - dgb_sha256_pool
 ```
 
-Each miner is evaluated independently, so miners with different efficiency or electricity costs can select different profiles.
+Each miner is evaluated independently, so miners with different efficiency or electricity rates may select different profiles.
+
+## Data providers
+
+### CoinGecko price
+
+```yaml
+price:
+  provider: coingecko
+  coingecko_id: bitcoin
+```
+
+### Static price or hashrate
+
+```yaml
+price:
+  provider: static
+  usd: 65000
+
+network:
+  provider: static
+  network_hashrate_hs: 1000000000000000000000
+```
+
+### Generic HTTP JSON
+
+```yaml
+network:
+  provider: http_json
+  url: https://example/api
+  json_path: data.hashrate
+  multiplier: 1000000000000
+```
+
+### Bitcoin-compatible JSON-RPC
+
+```yaml
+network:
+  provider: json_rpc
+  url: http://192.168.50.81:8332
+  username_env: BITCOIN_RPC_USER
+  password_env: BITCOIN_RPC_PASSWORD
+  method: getnetworkhashps
+  params: [120]
+```
 
 ## DigiByte warning
 
-DigiByte uses multiple mining algorithms. The controller must be given the **SHA-256-specific** DigiByte network hashrate—not total DigiByte network hashrate across every algorithm.
+DigiByte uses several mining algorithms. The DGB network hashrate value must be the **SHA-256-specific hashrate**, not total hashrate across all algorithms.
 
-## Prediction and manual bias
+Verify the current block reward and pool details before enabling the DGB profile.
 
-A pool profile may include a controlled score multiplier:
+## Predictions and rumors
+
+This program intentionally does not scrape social media or pretend it can reliably predict prices.
+
+A manual bias is available:
 
 ```yaml
 manual_bias_multiplier: 1.10
 ```
 
-That gives the profile a 10% score boost. It is not a market prediction. Keep minimum-advantage, confirmation, minimum-runtime, and maximum-switch protections enabled.
+That gives a profile a temporary 10% score boost. Use small values, keep confirmation rules enabled, document why you changed it, and remove it after the event window.
+
+If your primary belief is that a coin will increase in price, buying a small amount is usually a more direct exposure than mining it early. Mining profitability can be erased by rising difficulty, other miners switching in, payout minimums, and conversion costs.
 
 ## Security
 
-- Keep AxeOS and this dashboard on a trusted LAN.
+- Keep AxeOS and this controller on the trusted LAN.
 - Do not expose AxeOS directly to the internet.
-- Protect RPC credentials and API keys.
-- Review every `axeos_patch` before disabling dry-run mode.
-- Use unique pool worker names.
+- Keep `/etc/bitaxe-switcher/environment` mode `600`.
+- Review every `axeos_patch` before leaving dry-run mode.
 
-## Status
 
-This is an early development version. Live switching should be tested carefully against the exact AxeOS release and pool configuration in use.
+# Web interface
+
+The non-containerized web interface provides:
+
+- Live dashboard for every miner
+- Per-miner profitability tables
+- Manual simulated or live profile switching
+- Miner restart controls
+- Miner, pool profile, and coin editors
+- Global safety settings
+- Raw YAML editor with timestamped backups
+- Controller log viewer
+- `/api/status` JSON endpoint and `/health` health check
+
+## Install the web version
+
+```bash
+chmod +x install-web.sh
+sudo ./install-web.sh
+```
+
+Open:
+
+```text
+http://SERVER-IP:8088
+```
+
+The default configuration remains in dry-run mode. Test the dashboard and simulated switching before enabling live mode.
