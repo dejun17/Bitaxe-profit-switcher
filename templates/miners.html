@@ -1,0 +1,18 @@
+{% extends "base.html" %}{% block content %}
+<section class="panel"><div class="panel-head"><div><h2>Add miner</h2><p>Each miner can have independent TH/s, wattage, electricity, and allowed pool profiles.</p></div></div>
+<form class="form-grid" method="post" action="/miners/save">
+<label>Miner ID<input name="miner_id" required placeholder="bitaxe_602_1"></label><label>Display name<input name="name" required placeholder="Living Room Gamma"></label>
+<label>IP or URL<input name="address" required placeholder="192.168.50.79"></label><label>Expected TH/s<input name="expected_hashrate_ths" type="number" step="0.001" required value="1.9"></label>
+<label>Expected watts<input name="power_watts" type="number" step="0.1" required value="33"></label><label>Electricity $/kWh <small>blank uses global</small><input name="electricity_usd_kwh" type="number" step="0.001"></label>
+<fieldset class="span-2"><legend>Allowed profiles</legend><div class="check-grid">{% for pid,p in profiles.items() %}<label class="check"><input type="checkbox" name="allowed_profiles" value="{{ pid }}">{{ pid }} <small>{{ p.coin }}</small></label>{% endfor %}</div></fieldset>
+<label class="check"><input type="checkbox" name="enabled" checked>Enabled</label><label class="check"><input type="checkbox" name="use_live_metrics" checked>Use live AxeOS metrics</label>
+<div class="span-2"><button class="button">Add miner</button></div></form></section>
+{% for mid,m in miners.items() %}<section class="panel"><div class="panel-head"><div><h2>{{ m.name }}</h2><p><code>{{ mid }}</code> · {{ m.address }}</p></div>{% set status=live.get(mid,{}) %}<span class="pill {{ 'ok' if not status.get('error') else 'danger' }}">{{ 'Online' if not status.get('error') else 'Unavailable' }}</span></div>
+<form class="form-grid" method="post" action="/miners/save"><input type="hidden" name="original_id" value="{{ mid }}">
+<label>Miner ID<input name="miner_id" required value="{{ mid }}"></label><label>Display name<input name="name" required value="{{ m.name }}"></label>
+<label>IP or URL<input name="address" required value="{{ m.address }}"></label><label>Expected TH/s<input name="expected_hashrate_ths" type="number" step="0.001" required value="{{ m.expected_hashrate_ths }}"></label>
+<label>Expected watts<input name="power_watts" type="number" step="0.1" required value="{{ m.power_watts }}"></label><label>Electricity $/kWh<input name="electricity_usd_kwh" type="number" step="0.001" value="{{ m.get('electricity_usd_kwh','') }}"></label>
+<fieldset class="span-2"><legend>Allowed profiles</legend><div class="check-grid">{% for pid,p in profiles.items() %}<label class="check"><input type="checkbox" name="allowed_profiles" value="{{ pid }}" {% if pid in m.get('allowed_profiles',[]) %}checked{% endif %}>{{ pid }} <small>{{ p.coin }}</small></label>{% endfor %}</div></fieldset>
+<label class="check"><input type="checkbox" name="enabled" {% if m.get('enabled',true) %}checked{% endif %}>Enabled</label><label class="check"><input type="checkbox" name="use_live_metrics" {% if m.get('use_live_metrics',true) %}checked{% endif %}>Use live AxeOS metrics</label>
+<div class="span-2 inline-actions"><button class="button">Save miner</button></form><form method="post" action="/miners/delete" data-confirm="Delete miner {{ mid }} from the controller?"><input type="hidden" name="miner_id" value="{{ mid }}"><button class="button danger">Delete</button></form></div></section>{% endfor %}
+{% endblock %}
