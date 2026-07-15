@@ -1,0 +1,22 @@
+[Unit]
+Description=Bitaxe Profit Switcher Web UI
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=bitaxe-switcher
+Group=bitaxe-switcher
+EnvironmentFile=-/etc/bitaxe-switcher/environment
+WorkingDirectory=/opt/bitaxe-switcher
+ExecStart=/opt/bitaxe-switcher/venv/bin/python /opt/bitaxe-switcher/webapp.py --config /etc/bitaxe-switcher/config.yaml --state /var/lib/bitaxe-switcher/state.json --log /var/log/bitaxe-switcher.log --host 0.0.0.0 --port 8088
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/etc/bitaxe-switcher /var/lib/bitaxe-switcher /var/log/bitaxe-switcher.log
+
+[Install]
+WantedBy=multi-user.target
