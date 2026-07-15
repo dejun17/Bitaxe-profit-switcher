@@ -1,0 +1,1 @@
+{% extends "base.html" %}{% block content %}<section class="toolbar"><a class="button ghost" href="/logs?lines=100">100 lines</a><a class="button ghost" href="/logs?lines=300">300 lines</a><a class="button ghost" href="/logs?lines=1000">1,000 lines</a></section><section class="panel"><pre class="logs">{{ log_content or 'No log entries yet.' }}</pre></section>{% endblock %}
