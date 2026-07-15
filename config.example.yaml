@@ -1,0 +1,159 @@
+general:
+  dry_run: true
+  electricity_usd_kwh: 0.17
+  http_timeout_seconds: 15
+  verify_tls: true
+  switching:
+    minimum_advantage_percent: 30
+    minimum_net_improvement_usd_day: 0.05
+    confirmation_checks: 4
+    minimum_runtime_hours: 6
+    maximum_switches_per_24h: 2
+    adopt_best_when_current_unknown: false
+    verification_timeout_seconds: 180
+    verification_interval_seconds: 5
+
+price_provider:
+  base_url: https://api.coingecko.com/api/v3
+  api_key_env: COINGECKO_API_KEY
+  api_key_header: x-cg-demo-api-key
+
+coins:
+  BTC:
+    enabled: true
+    price:
+      provider: coingecko
+      coingecko_id: bitcoin
+    network:
+      provider: json_rpc
+      url: http://192.168.50.81:8332
+      username_env: BITCOIN_RPC_USER
+      password_env: BITCOIN_RPC_PASSWORD
+      method: getnetworkhashps
+      params: [120]
+    block_reward_coins: 3.125
+    block_time_seconds: 600
+
+  BCH:
+    enabled: false
+    price:
+      provider: coingecko
+      coingecko_id: bitcoin-cash
+    network:
+      provider: static
+      network_hashrate_hs: 1
+    block_reward_coins: 3.125
+    block_time_seconds: 600
+
+  DGB:
+    enabled: false
+    price:
+      provider: coingecko
+      coingecko_id: digibyte
+    # This must be SHA-256-specific network hashrate, not total DGB hashrate.
+    network:
+      provider: static
+      network_hashrate_hs: 1
+    # Verify the current reward before enabling.
+    block_reward_coins: 256.42
+    block_time_seconds: 75
+
+profiles:
+  btc_braiins_sv2:
+    name: Braiins BTC SV2
+    coin: BTC
+    enabled: true
+    pool_fee_percent: 2.0
+    conversion_fee_percent: 0.0
+    manual_bias_multiplier: 1.0
+    axeos_patch:
+      stratumURL: stratum.braiins.com
+      stratumPort: 3333
+      stratumUser: dejunit.bitaxe
+      stratumPassword: CHANGE_ME
+      stratumProtocol: SV2
+      stratumV2ChannelType: extended
+      stratumV2AuthorityPubkey: CHANGE_ME
+      stratumDecodeCoinbase: false
+    verify:
+      stratumURL: stratum.braiins.com
+      stratumPort: 3333
+      stratumUser: dejunit.bitaxe
+      stratumProtocol: SV2
+      stratumV2ChannelType: extended
+    restart_after_patch: true
+    restart_grace_seconds: 8
+    verify_after_switch: true
+
+  btc_braiins_sv1_backup:
+    name: Braiins BTC SV1 Backup
+    coin: BTC
+    enabled: true
+    pool_fee_percent: 2.0
+    manual_bias_multiplier: 0.99
+    axeos_patch:
+      stratumURL: stratum.braiins.com
+      stratumPort: 443
+      stratumUser: dejunit.bitaxe-backup
+      stratumPassword: CHANGE_ME
+      stratumProtocol: SV1
+      stratumDecodeCoinbase: false
+    verify:
+      stratumURL: stratum.braiins.com
+      stratumPort: 443
+      stratumUser: dejunit.bitaxe-backup
+      stratumProtocol: SV1
+    restart_after_patch: true
+    verify_after_switch: true
+
+  dgb_sha256_pool:
+    name: DigiByte SHA-256 Pool
+    coin: DGB
+    enabled: false
+    pool_fee_percent: 1.0
+    conversion_fee_percent: 1.0
+    manual_bias_multiplier: 1.0
+    axeos_patch:
+      stratumURL: CHANGE_ME_DGB_POOL
+      stratumPort: 3333
+      stratumUser: CHANGE_ME_DGB_WALLET_OR_ACCOUNT.bitaxe
+      stratumPassword: x
+      stratumProtocol: SV1
+      stratumDecodeCoinbase: false
+    verify:
+      stratumURL: CHANGE_ME_DGB_POOL
+      stratumPort: 3333
+      stratumProtocol: SV1
+    restart_after_patch: true
+    verify_after_switch: true
+
+miners:
+  bitaxe_602:
+    name: BSB Bitaxe Gamma 602 V2
+    address: 192.168.50.79
+    enabled: true
+    expected_hashrate_ths: 1.9
+    power_watts: 33.0
+    use_live_metrics: true
+    use_live_hashrate: true
+    use_live_power: true
+    require_live_metrics: false
+    allowed_profiles:
+      - btc_braiins_sv2
+      - btc_braiins_sv1_backup
+      # - dgb_sha256_pool
+
+  # Copy this block for each additional miner.
+  # bitaxe_602_second:
+  #   name: Second Gamma 602
+  #   address: 192.168.50.80
+  #   enabled: true
+  #   expected_hashrate_ths: 1.85
+  #   power_watts: 31.5
+  #   use_live_metrics: true
+  #   use_live_hashrate: true
+  #   use_live_power: true
+  #   electricity_usd_kwh: 0.12
+  #   allowed_profiles:
+  #     - btc_braiins_sv2
+  #     - dgb_sha256_pool
