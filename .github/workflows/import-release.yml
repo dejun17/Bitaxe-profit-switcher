@@ -1,0 +1,35 @@
+name: Import source archive
+
+on:
+  push:
+    paths:
+      - 'release/bitaxe-profit-switcher-web-v1.zip'
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: homelab
+      - name: Extract project source
+        run: |
+          rm -rf /tmp/bitaxe-import
+          mkdir -p /tmp/bitaxe-import
+          unzip -q release/bitaxe-profit-switcher-web-v1.zip -d /tmp/bitaxe-import
+          cp -a /tmp/bitaxe-import/bitaxe-profit-switcher/. ./
+          rm -rf release
+      - name: Commit extracted source
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No source changes to commit."
+            exit 0
+          fi
+          git commit -m "Import complete web application source"
+          git push origin HEAD:homelab
