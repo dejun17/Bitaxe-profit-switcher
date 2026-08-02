@@ -57,6 +57,30 @@ coins:
     block_time_seconds: 75
 
 profiles:
+  btc_parasite:
+    name: Parasite Pool BTC
+    coin: BTC
+    enabled: true
+    # Parasite Pool currently advertises no pool fee. Recheck before live use.
+    pool_fee_percent: 0.0
+    conversion_fee_percent: 0.0
+    manual_bias_multiplier: 1.0
+    axeos_patch:
+      stratumURL: parasite.wtf
+      stratumPort: 42069
+      stratumUser: CHANGE_ME_BTC_ADDRESS.bitaxe1
+      stratumPassword: x
+      stratumProtocol: SV1
+      stratumDecodeCoinbase: false
+    verify:
+      stratumURL: parasite.wtf
+      stratumPort: 42069
+      stratumUser: CHANGE_ME_BTC_ADDRESS.bitaxe1
+      stratumProtocol: SV1
+    restart_after_patch: true
+    restart_grace_seconds: 8
+    verify_after_switch: true
+
   btc_braiins_sv2:
     name: Braiins BTC SV2
     coin: BTC
@@ -137,6 +161,7 @@ miners:
     use_live_power: true
     require_live_metrics: false
     allowed_profiles:
+      - btc_parasite
       - btc_braiins_sv2
       - btc_braiins_sv1_backup
       # - dgb_sha256_pool
@@ -153,5 +178,6 @@ miners:
   #   use_live_power: true
   #   electricity_usd_kwh: 0.12
   #   allowed_profiles:
+  #     - btc_parasite
   #     - btc_braiins_sv2
   #     - dgb_sha256_pool
