@@ -24,13 +24,11 @@ coins:
     price:
       provider: coingecko
       coingecko_id: bitcoin
+    # Safe starter value. Replace with a trusted live source or your own
+    # Bitcoin Core JSON-RPC endpoint after the web app is working.
     network:
-      provider: json_rpc
-      url: http://192.168.50.81:8332
-      username_env: BITCOIN_RPC_USER
-      password_env: BITCOIN_RPC_PASSWORD
-      method: getnetworkhashps
-      params: [120]
+      provider: static
+      network_hashrate_hs: 1000000000000000000000
     block_reward_coins: 3.125
     block_time_seconds: 600
 
@@ -69,7 +67,7 @@ profiles:
     axeos_patch:
       stratumURL: stratum.braiins.com
       stratumPort: 3333
-      stratumUser: dejunit.bitaxe
+      stratumUser: CHANGE_ME.worker
       stratumPassword: CHANGE_ME
       stratumProtocol: SV2
       stratumV2ChannelType: extended
@@ -78,7 +76,7 @@ profiles:
     verify:
       stratumURL: stratum.braiins.com
       stratumPort: 3333
-      stratumUser: dejunit.bitaxe
+      stratumUser: CHANGE_ME.worker
       stratumProtocol: SV2
       stratumV2ChannelType: extended
     restart_after_patch: true
@@ -94,14 +92,14 @@ profiles:
     axeos_patch:
       stratumURL: stratum.braiins.com
       stratumPort: 443
-      stratumUser: dejunit.bitaxe-backup
+      stratumUser: CHANGE_ME.worker-backup
       stratumPassword: CHANGE_ME
       stratumProtocol: SV1
       stratumDecodeCoinbase: false
     verify:
       stratumURL: stratum.braiins.com
       stratumPort: 443
-      stratumUser: dejunit.bitaxe-backup
+      stratumUser: CHANGE_ME.worker-backup
       stratumProtocol: SV1
     restart_after_patch: true
     verify_after_switch: true
