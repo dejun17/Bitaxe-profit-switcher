@@ -14,14 +14,24 @@ trap 'echo "Installation failed on line $LINENO." >&2' ERR
 [[ ${EUID} -eq 0 ]] || { echo "Run this installer as root." >&2; exit 1; }
 [[ -f "$SCRIPT_DIR/webapp.py" ]] || { echo "webapp.py not found in $SCRIPT_DIR" >&2; exit 1; }
 [[ -f "$SCRIPT_DIR/bitaxe_switcher.py" ]] || { echo "bitaxe_switcher.py not found in $SCRIPT_DIR" >&2; exit 1; }
+[[ -f "$SCRIPT_DIR/requirements.txt" ]] || { echo "requirements.txt not found in $SCRIPT_DIR" >&2; exit 1; }
+[[ -f "$SCRIPT_DIR/config.example.yaml" ]] || { echo "config.example.yaml not found in $SCRIPT_DIR" >&2; exit 1; }
+[[ -f "$SCRIPT_DIR/systemd/$SERVICE_NAME" ]] || { echo "$SERVICE_NAME not found in $SCRIPT_DIR/systemd" >&2; exit 1; }
 [[ -d "$SCRIPT_DIR/templates" ]] || { echo "templates/ not found in $SCRIPT_DIR" >&2; exit 1; }
 [[ -d "$SCRIPT_DIR/static" ]] || { echo "static/ not found in $SCRIPT_DIR" >&2; exit 1; }
 
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
 apt-get install -y --no-install-recommends \
-  ca-certificates curl git iputils-ping jq netcat-openbsd \
+  ca-certificates curl git iputils-ping jq locales netcat-openbsd \
   python3 python3-pip python3-venv unzip wget
+
+# Ensure the configured locale exists so apt/perl do not emit locale warnings.
+if ! locale -a 2>/dev/null | grep -qi '^en_US\.utf8$'; then
+  sed -i 's/^# *en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen
+  locale-gen en_US.UTF-8
+fi
+update-locale LANG=en_US.UTF-8
 
 if ! id "$USER_NAME" >/dev/null 2>&1; then
   useradd --system --home-dir "$STATE_DIR" --create-home --shell /usr/sbin/nologin "$USER_NAME"
@@ -57,9 +67,13 @@ touch "$LOG_FILE"
 chown "$USER_NAME:$USER_NAME" "$LOG_FILE"
 chmod 0640 "$LOG_FILE"
 
-install -m 0644 "$SCRIPT_DIR/systemd/bitaxe-switcher-web.service" "/etc/systemd/system/$SERVICE_NAME"
-install -m 0644 "$SCRIPT_DIR/systemd/bitaxe-switcher.service" /etc/systemd/system/bitaxe-switcher.service
-install -m 0644 "$SCRIPT_DIR/systemd/bitaxe-switcher.timer" /etc/systemd/system/bitaxe-switcher.timer
+# Remove stale legacy CLI services from older releases.
+systemctl disable --now bitaxe-switcher.timer 2>/dev/null || true
+systemctl disable --now bitaxe-switcher.service 2>/dev/null || true
+rm -f /etc/systemd/system/bitaxe-switcher.timer
+rm -f /etc/systemd/system/bitaxe-switcher.service
+
+install -m 0644 "$SCRIPT_DIR/systemd/$SERVICE_NAME" "/etc/systemd/system/$SERVICE_NAME"
 
 systemctl daemon-reload
 systemctl enable --now "$SERVICE_NAME"
